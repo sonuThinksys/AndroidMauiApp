@@ -3,6 +3,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioManager;
 import android.os.Bundle;
@@ -17,11 +18,16 @@ import android.widget.LinearLayout;
 import android.content.Context;
 import com.azure.android.communication.calling.CallState;
 import com.azure.android.communication.calling.CallingCommunicationException;
+import com.azure.android.communication.calling.IncomingVideoOptions;
+import com.azure.android.communication.calling.JoinMeetingLocator;
+import com.azure.android.communication.calling.OutgoingAudioOptions;
+import com.azure.android.communication.calling.OutgoingVideoOptions;
 import com.azure.android.communication.calling.ParticipantsUpdatedListener;
 import com.azure.android.communication.calling.PropertyChangedEvent;
 import com.azure.android.communication.calling.PropertyChangedListener;
 import com.azure.android.communication.calling.StartCallOptions;
 import com.azure.android.communication.calling.VideoDeviceInfo;
+import com.azure.android.communication.calling.VideoStreamType;
 import com.azure.android.communication.common.CommunicationIdentifier;
 import com.azure.android.communication.common.CommunicationTokenCredential;
 import com.azure.android.communication.calling.CallAgent;
@@ -54,8 +60,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
+import com.azure.android.communication.calling.RoomCallLocator;
 
 public class MyLibraryMainActivity extends AppCompatActivity {
 
@@ -71,10 +79,8 @@ public class MyLibraryMainActivity extends AppCompatActivity {
     private boolean renderRemoteVideo = true;
     private ParticipantsUpdatedListener remoteParticipantUpdatedListener;
     private PropertyChangedListener onStateChangedListener;
-
     final HashSet<String> joinedParticipants = new HashSet<>();
     RadioButton oneToOneCall, groupCall;
-    String token="eyJhbGciOiJSUzI1NiIsImtpZCI6IjYwNUVCMzFEMzBBMjBEQkRBNTMxODU2MkM4QTM2RDFCMzIyMkE2MTkiLCJ4NXQiOiJZRjZ6SFRDaURiMmxNWVZpeUtOdEd6SWlwaGsiLCJ0eXAiOiJKV1QifQ.eyJza3lwZWlkIjoiYWNzOjExYzk1NjI4LWRhNzMtNDZmMi05NzY5LTgxOTkwMjdiMjFiZV8wMDAwMDAxZi00N2IwLTZjZTAtMjhmNC0zNDNhMGQwMGRlMmUiLCJzY3AiOjE3OTIsImNzaSI6IjE3MTIyMTIzMzEiLCJleHAiOjE3MTIyOTg3MzEsInJnbiI6ImFtZXIiLCJhY3NTY29wZSI6InZvaXAiLCJyZXNvdXJjZUlkIjoiMTFjOTU2MjgtZGE3My00NmYyLTk3NjktODE5OTAyN2IyMWJlIiwicmVzb3VyY2VMb2NhdGlvbiI6InVuaXRlZHN0YXRlcyIsImlhdCI6MTcxMjIxMjMzMX0.KQ7dRDBIEDm3airzaI04ABDDUKBvmOL4QT2ZanXpVsgKqPiw1H0juPCnAdvpSKYwdPV24hPY5nOZ6nUzrFjvQpHcbi9AjgdWT3Dz1u8yQYNN6uZuBiw0oIfj98iYzcgY9rssrQWRMjG5JBJZ7F9lXu5uqjG_0FUsOKkT55Ccai3Sr2dO4VsmACJniBzmfwqUdmQFKV77lai2JItyVhZJ8KsnGCK4T3qGQls62w_j5agoU1_bpBkRlYCLc3CfAXxNMV6MXfsQmASOkSbt955sMg93QvnjvfLty-R5hsntBIIkZjT5FEqVj8ujYEPB0pf7o3UP_jkolP3Tt6_s7dx6ZQ";
     Button switchSourceButton;
 
 
@@ -85,7 +91,6 @@ public class MyLibraryMainActivity extends AppCompatActivity {
 
         getAllPermissions();
         createAgent();
-//
         handleIncomingCall();
 
         Button callButton = findViewById(R.id.call_button);
@@ -96,21 +101,21 @@ public class MyLibraryMainActivity extends AppCompatActivity {
         startVideo.setOnClickListener(l -> turnOnLocalVideo());
         Button stopVideo = findViewById(R.id.hide_preview);
         stopVideo.setOnClickListener(l -> turnOffLocalVideo());
-
         switchSourceButton = findViewById(R.id.switch_source);
         switchSourceButton.setOnClickListener(l -> switchSource());
-
         setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
-
         oneToOneCall = findViewById(R.id.one_to_one_call);
         oneToOneCall.setOnClickListener(this::onCallTypeSelected);
         oneToOneCall.setChecked(true);
         groupCall = findViewById(R.id.group_call);
         groupCall.setOnClickListener(this::onCallTypeSelected);
-        String p=CallState.CONNECTED.toString();
-        String userToken = token;
-        CommunicationTokenCredential credential = new CommunicationTokenCredential(userToken);
-        Toast.makeText(this, p, Toast.LENGTH_SHORT).show();
+
+//        String p=CallState.CONNECTED.toString();
+//        Intent intent=getIntent();
+//       String accessToken=intent.getStringExtra("accessToken");
+//        String userToken = accessToken;
+//        CommunicationTokenCredential credential = new CommunicationTokenCredential(userToken);
+//        Toast.makeText(this, p, Toast.LENGTH_SHORT).show();
     }
     /**
      * Request each required permission if the app doesn't already have it.
@@ -127,13 +132,15 @@ public class MyLibraryMainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, permissionsToAskFor.toArray(new String[0]), 1);
         }
     }
-
     /**
      * Create the call agent for placing calls
      */
     private void createAgent() {
         Context context = this.getApplicationContext();
+        Intent intent=getIntent();
+        String token=intent.getStringExtra("accessToken");
         String userToken =token;
+
         try {
             CommunicationTokenCredential credential = new CommunicationTokenCredential(userToken);
             CallClient callClient = new CallClient();
@@ -160,6 +167,9 @@ public class MyLibraryMainActivity extends AppCompatActivity {
             return;
         }
         AcceptCallOptions acceptCallOptions = new AcceptCallOptions();
+        IncomingVideoOptions incomingVideoOptions = new IncomingVideoOptions();
+        OutgoingVideoOptions outgoingVideoOptions = new OutgoingVideoOptions();
+        OutgoingAudioOptions outgoingAudioOptions = new OutgoingAudioOptions();
         List<VideoDeviceInfo> cameras = deviceManager.getCameras();
         if(!cameras.isEmpty()) {
             currentCamera = getNextAvailableCamera(null);
@@ -168,6 +178,8 @@ public class MyLibraryMainActivity extends AppCompatActivity {
             videoStreams[0] = currentVideoStream;
             VideoOptions videoOptions = new VideoOptions(videoStreams);
             acceptCallOptions.setVideoOptions(videoOptions);
+//            incomingVideoOptions.setStreamType(VideoStreamType.REMOTE_INCOMING);
+//            outgoingVideoOptions.setOutgoingVideoStreams(Arrays.asList(videoStreams[0]));
             showPreview(currentVideoStream);
         }
         try {
@@ -216,34 +228,46 @@ public class MyLibraryMainActivity extends AppCompatActivity {
     }
     private void startCall() {
             Context context = this.getApplicationContext();
-            EditText callIdView = findViewById(R.id.call_id);
+//        EditText callIdView = findViewById(R.id.call_id);
+//
 //            String callId = callIdView.getText().toString();
-            String callId = "4b744aec-3dae-0161-0000-000000000000";
+
+          Intent intent=getIntent();
+          String callID=intent.getStringExtra("callID");
+            String callId = callID;
+        Toast.makeText(this, callID, Toast.LENGTH_SHORT).show();
             ArrayList<CommunicationIdentifier> participants = new ArrayList<CommunicationIdentifier>();
             List<VideoDeviceInfo> cameras = deviceManager.getCameras();
 
-
             if(oneToOneCall.isChecked()){
                 StartCallOptions options = new StartCallOptions();
+                IncomingVideoOptions incomingVideoOptions = new IncomingVideoOptions();
+                OutgoingVideoOptions outgoingVideoOptions = new OutgoingVideoOptions();
+                OutgoingAudioOptions outgoingAudioOptions = new OutgoingAudioOptions();
                 if(!cameras.isEmpty()) {
                     currentCamera = getNextAvailableCamera(null);
                     currentVideoStream = new LocalVideoStream(currentCamera, context);
                     LocalVideoStream[] videoStreams = new LocalVideoStream[1];
                     videoStreams[0] = currentVideoStream;
-                    VideoOptions videoOptions = new VideoOptions(videoStreams);
-                    options.setVideoOptions(videoOptions);
+//                    VideoOptions videoOptions = new VideoOptions(videoStreams);
+//                    options.setVideoOptions(videoOptions);
+                    incomingVideoOptions.setStreamType(VideoStreamType.REMOTE_INCOMING);
+                    outgoingVideoOptions.setOutgoingVideoStreams(Arrays.asList(videoStreams[0]));
+                    outgoingAudioOptions.setMuted(false);
                     showPreview(currentVideoStream);
                 }
-                participants.add(new CommunicationUserIdentifier(callId));
 
+                participants.add(new CommunicationUserIdentifier(callId));
                 call = callAgent.startCall(
                         context,
                         participants,
                         options);
             }
             else{
-
                 JoinCallOptions options = new JoinCallOptions();
+//                IncomingVideoOptions incomingVideoOptions = new IncomingVideoOptions();
+//                OutgoingVideoOptions outgoingVideoOptions = new OutgoingVideoOptions();
+//                OutgoingAudioOptions outgoingAudioOptions = new OutgoingAudioOptions();
                 if(!cameras.isEmpty()) {
                     currentCamera = getNextAvailableCamera(null);
                     currentVideoStream = new LocalVideoStream(currentCamera, context);
@@ -251,9 +275,13 @@ public class MyLibraryMainActivity extends AppCompatActivity {
                     videoStreams[0] = currentVideoStream;
                     VideoOptions videoOptions = new VideoOptions(videoStreams);
                     options.setVideoOptions(videoOptions);
+//                    incomingVideoOptions.setStreamType(VideoStreamType.REMOTE_INCOMING);
+//                    outgoingVideoOptions.setOutgoingVideoStreams(Arrays.asList(videoStreams[0]));
+//                    outgoingAudioOptions.setMuted(false);
                     showPreview(currentVideoStream);
                 }
                 GroupCallLocator groupCallLocator = new GroupCallLocator(UUID.fromString(callId));
+//                RoomCallLocator roomCallLocator = new RoomCallLocator(callId);
 
                 call = callAgent.join(
                         context,
@@ -380,10 +408,15 @@ public class MyLibraryMainActivity extends AppCompatActivity {
 
     private void videoStreamsUpdated(RemoteVideoStreamsEvent videoStreamsEventArgs) {
         for(RemoteVideoStream stream : videoStreamsEventArgs.getAddedRemoteVideoStreams()) {
-            StreamData data = new StreamData(stream, null, null);
-            streamData.put(stream.getId(), data);
-            if (renderRemoteVideo) {
-                startRenderingVideo(data);
+            if (!streamData.containsKey(stream.getId())) {
+                Log.i("MainActivity", "VideoStreamsUpdated => Started Rendering of Remote Video for video Id: " + stream.getId());
+                StreamData data = new StreamData(stream, null, null);
+                streamData.put(stream.getId(), data);
+                if (renderRemoteVideo) {
+                    startRenderingVideo(data);
+                }
+            } else {
+                Log.w("MainActivity", "VideoStreamsUpdated => Rendering of Remote Video already started for video Id: " + stream.getId());
             }
         }
 

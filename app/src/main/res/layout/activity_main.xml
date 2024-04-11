@@ -8,14 +8,35 @@
 
   <LinearLayout
       android:layout_width="match_parent"
-      android:layout_height="match_parent">
-      <TextView
-          android:id="@+id/textView"
-          android:layout_width="wrap_content"
+      android:layout_height="match_parent"
+      android:orientation="vertical"
+      >
+
+      <EditText
+          android:id="@+id/accessToken"
+          android:layout_width="match_parent"
           android:layout_height="wrap_content"
-          android:text="TextView"
-          tools:layout_editor_absoluteX="181dp"
-          tools:layout_editor_absoluteY="350dp" />
+          android:ems="10"
+          android:gravity="center"
+          android:hint="Access Token"
+          android:inputType="textPersonName"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="parent"
+          app:layout_constraintVertical_bias="0.064" />
+      <EditText
+          android:id="@+id/call_id"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:ems="10"
+          android:gravity="center"
+          android:hint="Callee ID"
+          android:inputType="textPersonName"
+          app:layout_constraintBottom_toTopOf="@+id/call_button"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="parent"
+          app:layout_constraintVertical_bias="0.064" />
       <Button
           android:id="@+id/startCall"
           android:layout_width="wrap_content"
