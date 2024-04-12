@@ -280,6 +280,7 @@ public class MyLibraryMainActivity extends AppCompatActivity {
 //                    outgoingAudioOptions.setMuted(false);
                     showPreview(currentVideoStream);
                 }
+                
                 GroupCallLocator groupCallLocator = new GroupCallLocator(UUID.fromString(callId));
 //                RoomCallLocator roomCallLocator = new RoomCallLocator(callId);
 
